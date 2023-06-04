@@ -5,7 +5,7 @@ import numpy as np
 
 # Global variables
 get_RAW = False
-n = 7 # window size: 5, 7, 10
+n = 3 # window size: 5, 7, 10
 create_Data = True
 create_Data_Combined = True
 
@@ -57,6 +57,7 @@ if create_Data:
                 np.save(f"Data/Test/n={n}/x_without_{cp}", test_x)
                 np.save(f"Data/Test/n={n}/y_without_{cp}", test_y)
 
+
     # save x and y as npy file
     v = int(x.shape[0] / n)
     x = x.reshape((v, n))
@@ -94,4 +95,3 @@ if create_Data_Combined:
     print(x.shape, y.shape)
     np.save(f"Data/Training/n={n}/x_with", x)
     np.save(f"Data/Training/n={n}/y_with", y)
-

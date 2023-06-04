@@ -6,7 +6,7 @@ import numpy as np
 # n = 3
 
 def load_x_y(path : str, n: int, normalize:bool = False):
-    data = pd.read_csv(path, index_col='Date')  
+    data = pd.read_csv(path, index_col='Date')['Adj Close']
 
     # We make x as an array of the last n day and y as the close price
     # This means we lose n rows of our data
@@ -14,8 +14,8 @@ def load_x_y(path : str, n: int, normalize:bool = False):
     if normalize:
         data = (data-data.min())/(data.max()-data.min())
 
-    x = [window.to_list() for window in data['Adj Close'].rolling(window=n)][n - 1:-n]
-    y = [window.to_list() for window in data['Adj Close'].rolling(window=n)][2*n - 1:]
+    x = [window.to_list() for window in data.rolling(window=n)][n - 1:-n]
+    y = [window.to_list() for window in data.rolling(window=n)][2*n - 1:]
 
     return x, y
 
@@ -40,11 +40,12 @@ def load_x_y_combined(path1: str, path2: str, n: int, normalize: bool = False):
     x1 = [window.to_list() for window in company_data.rolling(window=n)][n - 1:-n]
     x2 = [window.to_list() for window in commodity_data.rolling(window=n)][n - 1:-n]
     c = min(len(x1), len(x2))
-    x = [[x1[i], x2[i]] for i in range(c)]
+    x = [[x1[-i], x2[-i]] for i in range(1, c + 1)][::-1]
+
     y1 = [window.to_list() for window in company_data.rolling(window=n)][2*n - 1:]
     y2 = [window.to_list() for window in commodity_data.rolling(window=n)][2*n - 1:]
     c = min(len(y1), len(y2))
-    y = [[y1[i], y2[i]] for i in range(c)]
+    y = [[y1[-i], y2[-i]] for i in range(1, c + 1)][::-1]
 
     return x, y
 
