@@ -4,6 +4,7 @@ import tensorflow as tf
 from keras.models import Sequential, load_model
 from tqdm import tqdm
 from sklearn.metrics import mean_squared_error
+import os
 
 def univariate_model(X_train, y_train):
     '''
@@ -13,8 +14,8 @@ def univariate_model(X_train, y_train):
     
     # create a model
     model = Sequential([
-    tf.keras.layers.LSTM(16, input_shape=(n, X_train.shape[-1])),
-    tf.keras.layers.Dense(n)  # Define the output layer
+    tf.keras.layers.LSTM(32, input_shape=(n, X_train.shape[-1])),
+    tf.keras.layers.Dense(m)
     ])
 
     model.compile(optimizer='adam', loss='mean_squared_error')
@@ -32,11 +33,12 @@ def multivariate_model(X_train, y_train):
     
     # create a model
     model = Sequential([
-    tf.keras.layers.LSTM(16, input_shape=(n, X_train.shape[-1]), return_sequences=True),
-    tf.keras.layers.Dense(X_train.shape[-1])  # Define the output layer
+    tf.keras.layers.LSTM(32, input_shape=(X_train.shape[1], X_train.shape[2]), return_sequences=True),
+    tf.keras.layers.Dense(2)
     ])
-
     model.compile(optimizer='adam', loss='mean_squared_error')
+
+    model.summary()
 
     # fit the model
     history = model.fit(X_train, y_train, validation_split = 0.15, epochs=50, batch_size=64, verbose=0)
@@ -57,11 +59,12 @@ def RMSE(y_true, y_hat):
 
 if __name__ == "__main__":
     # Set True if you want to train
-    TRAIN = True
+    TRAIN = False
     
     # This sets the historical window size
-    n = 5
-    ver = "with" # with -> with commodity feature (multivariate model), without -> (univariate model)
+    n = 14
+    m = 3
+    ver = "without" # with -> with commodity feature (multivariate model), without -> (univariate model)
 
     if TRAIN:
         # the data is normalized, and has everything except the latest 20% SHEL data
@@ -123,16 +126,8 @@ if __name__ == "__main__":
             yi = np.reshape(yi, (1, 1))
             xi = np.append(xi, yi, 1)
 
-    dates = np.array(list(range(len(X_test))))
-    # y_predict = my_model.predict(X_test)
- 
-    # print('prediction:', RMSE(y_predict[:,  0], Y_test[:,  0]))
-    print('forecasting:',RMSE(Y_test[:,  0], forecast))
-
-    plt.plot(dates, Y_test[:, 0], label = "Target")
-    # plt.plot(dates, y_predict[:,  0], label = "Prediction")
-    plt.plot(dates, forecast, label = "Forecasting")
-
-    plt.title(f"n={n}, {ver}")
-    plt.legend()
-    plt.show()
+    # Save the results
+    commodity = 'CL=F'
+    if not os.path.exists(f"Data/Results/{commodity}"):
+        os.makedirs(f"Data/Results/{commodity}")
+    np.save(f"Data/Results/{commodity}/{ver}_n={n}", forecast)

@@ -5,7 +5,8 @@ import numpy as np
 
 # Global variables
 get_RAW = False
-n = 3 # window size: 5, 7, 10
+n = 14 # window size: 5, 7, 10, 14
+m = 3 # prediction window size
 create_Data = True
 create_Data_Combined = True
 
@@ -44,7 +45,7 @@ if create_Data:
         path = f"Data/{commodity}"
         for cp in cps:
             if os.path.exists(f"{path}/raw_data_{cp}.csv"):
-                cp_x, cp_y = data_process.load_x_y(f"{path}/raw_data_{cp}.csv", n, normalize=True)
+                cp_x, cp_y = data_process.load_x_y(f"{path}/raw_data_{cp}.csv", n, m, True)
 
                 # The last 30 days will be our test set the rest will be used as training + validation
                 x = np.append(x, np.array([np.array(xi) for xi in cp_x])[:-30])
@@ -61,8 +62,9 @@ if create_Data:
     # save x and y as npy file
     v = int(x.shape[0] / n)
     x = x.reshape((v, n))
-    y = y.reshape((v, n))
+    y = y.reshape((v, m))
     print(x.shape, y.shape)
+
     np.save(f"Data/Training/n={n}/x_without", x)
     np.save(f"Data/Training/n={n}/y_without", y)
 
@@ -75,7 +77,7 @@ if create_Data_Combined:
         commodity_path = f"Data/{commodity}/raw_data_{commodity}.csv"
         for cp in cps:
             company_path = f"Data/{commodity}/raw_data_{cp}.csv"
-            cp_x, cp_y = data_process.load_x_y_combined(company_path, commodity_path, n, normalize=True)
+            cp_x, cp_y = data_process.load_x_y_combined(company_path, commodity_path, n, m, True)
             cp_x, cp_y = np.array(cp_x), np.array(cp_y)
 
             # 80% -> training + validation
@@ -91,7 +93,7 @@ if create_Data_Combined:
     # save x and y as npy file
     v = int(x.shape[0] / (2 * n))
     x = x.reshape((v, 2, n))
-    y = y.reshape((v, 2, n))
+    y = y.reshape((v, 2, m))
     print(x.shape, y.shape)
     np.save(f"Data/Training/n={n}/x_with", x)
     np.save(f"Data/Training/n={n}/y_with", y)
