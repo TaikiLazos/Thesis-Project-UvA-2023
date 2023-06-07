@@ -47,25 +47,27 @@ def load_x_y_combined(path1: str, path2: str, n: int, m: int, normalize: bool = 
     return x, y
 
 
-def ts_train_test(x, y):
-    '''
-    input: 
-        x, y: x values and y values 
-    output:
-      X_train, y_train: 80% of the data
-      X_test: 20% of the data
-    '''
-    # create training and test set
-    split = 0.8
+def create_x_y(df, N, M):
+    """
+    Make x and y from a pd.Dataframe
+    x => (# of samples, N, # of features)
+    y => (# of samples, M, # of features)
+    """
+    data_array = df.values
+    x = np.array([])
+    samples = data_array.shape[0] - N + 1
 
-    X_train = np.array((x[:int(len(x) * split)]))
-    Y_train  = np.array(y[:int(len(x) * split)])
-    X_test = np.array(x[int(len(x) * split):])
-    Y_test = np.array(y[int(len(x) * split):])
+    for i in range(samples):
+        tmp = data_array[i:i+N]
+        x = np.append(x, tmp)
+    x = np.reshape(x, (samples, N, data_array.shape[1]))
 
+    y = np.array([])
+    samples = data_array.shape[0] - M + 1
+    for i in range(samples):
+        tmp = data_array[i:i+M]
+        y = np.append(y, tmp)
+    y = np.reshape(y, (samples, M, data_array.shape[1]))
+    
+    return x[:-M], y[N:]
 
-    # reshape
-    X_train = np.reshape(X_train, (X_train.shape[0],X_train.shape[1],1))
-    X_test = np.reshape(X_test, (X_test.shape[0],X_test.shape[1],1))
-
-    return X_train, Y_train , X_test, Y_test
