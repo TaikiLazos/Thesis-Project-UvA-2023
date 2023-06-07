@@ -10,7 +10,7 @@ raw_df = pd.read_csv(path)
 raw_df['Adj Close'] = (raw_df['Adj Close']-raw_df['Adj Close'].min())/(raw_df['Adj Close'].max()-raw_df['Adj Close'].min())
 
 # Let's take data from this year (2023)
-raw_df = raw_df[raw_df['Date'] >= "2022-01-01"]['Adj Close'].to_numpy()
+raw_df = raw_df[raw_df['Date'] >= "2022-02-01"]['Adj Close'].to_numpy()
 
 
 # let's load the result of our model
