@@ -17,7 +17,7 @@ import numpy as np
 
 # Global variables
 GET_RAW = False
-WITHOUT_COMMODITY = True
+WITHOUT_COMMODITY = False
 WITH_COMMODITY = True
 N = 5  # window size: 5, 7, 10, 14
 M = 3
@@ -60,6 +60,10 @@ if GET_RAW:
             raw_data = yf.download(cp, START_DATE, END_DATE)
             raw_data.to_csv(f"Data/{commodity}/raw_data_{cp}.csv", index=True)
 
+# Randomly select five different dates for test data
+# test_periods = data_process.choose_5_periods(f"Data/CL=F")
+# print(test_periods)
+
 ### WITHOUT COMMODITY DATASET ###
 if WITHOUT_COMMODITY:
     ### Creating training dataset and test dataset
@@ -78,29 +82,36 @@ if WITHOUT_COMMODITY:
             df = pd.read_csv(f"{path}/raw_data_{cp}.csv")
             # Add features
             df = create_features.add_technical_indicators(df)
-            
+
             # Select the needed columns
-            df = df[['Date', 'Adj Close', 'Volume', 'RSI', 'MFI', 'EMA', 'SO', 'MACD']]
+            df = df[["Date", "Adj Close", "Volume", "RSI", "MFI", "EMA", "SO", "MACD"]]
             # Normalize them (execpt for Date)
-            target_cols = ['Adj Close', 'Volume', 'RSI', 'MFI', 'EMA', 'SO', 'MACD']
-            df[target_cols] = (df[target_cols]-df[target_cols].min())/(df[target_cols].max()-df[target_cols].min())
+            target_cols = ["Adj Close", "Volume", "RSI", "MFI", "EMA", "SO", "MACD"]
+            df[target_cols] = (df[target_cols] - df[target_cols].min()) / (
+                df[target_cols].max() - df[target_cols].min()
+            )
+            # Drop cells with nan and inf
+            df = df.dropna()
 
             # Take the latest 60 days as testing set and the rest for training + validation
             df_test = df.tail(60)
             df_training = df.iloc[:-60]
             # x_test, y_test = data_process.create_x_y(df_test[target_cols], N, M)
-            df_test.to_csv(f"Data/Test/{commodity}/n={N}/x_without_{cp}.csv", index=True)
+            df_test.to_csv(
+                f"Data/Test/{commodity}/n={N}/x_without_{cp}.csv", index=True
+            )
             x_train, y_train = data_process.create_x_y(df_training[target_cols], N, M)
             x = np.append(x, x_train)
             y = np.append(y, y_train)
-    
+
     # Reshape
     samples = int(len(x) / (N * len(target_cols)))
     x = np.reshape(x, (samples, N, len(target_cols)))
     y = np.reshape(y, (samples, M, len(target_cols)))
-    
+
     # Save the data
     if x.shape[0] == y.shape[0]:
+        print(f"N = {N}, M = {M}")
         print("Without commodity dataset was succesfully created.")
         util.make_folder(f"Data/Training/n={N}")
         np.save(f"Data/Training/n={N}/x_without", x)
@@ -115,7 +126,9 @@ if WITH_COMMODITY:
     for commodity, cps in data_pair.items():
         path = f"Data/{commodity}"
         util.make_folder(f"Data/Test/{commodity}/n={N}")
-        commodity_df = pd.read_csv(f"Data/{commodity}/raw_data_{commodity}.csv", index_col='Date')
+        commodity_df = pd.read_csv(
+            f"Data/{commodity}/raw_data_{commodity}.csv", index_col="Date"
+        )
         for cp in cps:
             # in case dataset does not exist
             if not os.path.exists(f"{path}/raw_data_{cp}.csv"):
@@ -129,28 +142,57 @@ if WITH_COMMODITY:
             df = create_features.add_technical_indicators(df)
 
             # Select the needed columns
-            df = df[['Date', 'Adj Close', 'Volume', 'Adj Close Commodity', 'RSI', 'MFI', 'EMA', 'SO', 'MACD']]
+            df = df[
+                [
+                    "Date",
+                    "Adj Close",
+                    "Volume",
+                    "Adj Close Commodity",
+                    "RSI",
+                    "MFI",
+                    "EMA",
+                    "SO",
+                    "MACD",
+                ]
+            ]
             # Normalize them (execpt for Date)
-            target_cols = ['Adj Close', 'Volume', 'Adj Close Commodity', 'RSI', 'MFI', 'EMA', 'SO', 'MACD']
-            df[target_cols] = (df[target_cols]-df[target_cols].min())/(df[target_cols].max()-df[target_cols].min())
+            target_cols = [
+                "Adj Close",
+                "Volume",
+                "Adj Close Commodity",
+                "RSI",
+                "MFI",
+                "EMA",
+                "SO",
+                "MACD",
+            ]
+            df[target_cols] = (df[target_cols] - df[target_cols].min()) / (
+                df[target_cols].max() - df[target_cols].min()
+            )
+
+            # Drop cells with nan and inf
+            df = df.dropna()
 
             # Take the latest 60 days as testing set and the rest for training + validation
             df_test = df.tail(60)
             df_training = df.iloc[:-60]
             # x_test, y_test = data_process.create_x_y(df_test[target_cols], N, M)
-            df_test.to_csv(f"Data/Test/{commodity}/n={N}/x_without_{cp}.csv", index=True)
+            df_test.to_csv(
+                f"Data/Test/{commodity}/n={N}/x_with_{cp}.csv", index=True
+            )
             x_train, y_train = data_process.create_x_y(df_training[target_cols], N, M)
             x = np.append(x, x_train)
             y = np.append(y, y_train)
-    
+
     # Reshape
     samples = int(len(x) / (N * len(target_cols)))
     x = np.reshape(x, (samples, N, len(target_cols)))
     y = np.reshape(y, (samples, M, len(target_cols)))
-    
+
     # Save the data
     if x.shape[0] == y.shape[0]:
-        print("Without commodity dataset was succesfully created.")
+        print(f"N = {N}, M = {M}")
+        print("With commodity dataset was succesfully created.")
         util.make_folder(f"Data/Training/n={N}")
-        np.save(f"Data/Training/n={N}/x_without", x)
-        np.save(f"Data/Training/n={N}/y_without", y)
+        np.save(f"Data/Training/n={N}/x_with", x)
+        np.save(f"Data/Training/n={N}/y_with", y)

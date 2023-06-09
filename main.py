@@ -1,3 +1,9 @@
+# 1. Preprocessing -> preprocessing.py (Adds features and reformats in desirable numpy array)
+# 2. Differential Privacy -> LS-LSTM shows improvement so why not -> main.py
+# 3. Algorithm X -> I need to do something here like TDM & TDC equivalent. -> main.py
+# 4. LSTM -> LSTM(32) -> dropout -> LSTM(16) -> dropout -> reformat to (M, # features) -> main.py
+# 5. Prediction & Forecasting 
+
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
