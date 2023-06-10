@@ -138,32 +138,32 @@ if __name__ == "__main__":
         os.makedirs(f"Data/Results/Prediction/{commodity}")
     np.save(f"Data/Results/Prediction/{commodity}/{ver}_n={n}", predict)
 
-    # if ver == 'with':
-    #     X_test = np.array([i.T for i in X_test])
-    #     Y_test = np.array([i.T for i in Y_test])
-    #     xi = np.reshape(X_test[0], (1, n, 2))
+    if ver == 'with':
+        X_test = np.array([i.T for i in X_test])
+        Y_test = np.array([i.T for i in Y_test])
+        xi = np.reshape(X_test[0], (1, n, 2))
 
-    #     for _ in tqdm(range(len(X_test))):
-    #         yi = np.mean(my_model.predict(xi), axis=1)
-    #         forecast = np.append(forecast, yi[0][0])
-    #         # pop the first index and append the yi to the last index
-    #         xi =  np.delete(xi, [0], 1)
-    #         xi = np.append(xi[0], yi, 0)
-    #         xi = np.reshape(xi, (1, n, 2))
-    # else:
-    #     X_test = np.reshape(X_test, (30, n, 1))
-    #     xi = np.reshape(X_test[0], (1, n))
+        for _ in tqdm(range(len(X_test))):
+            yi = np.mean(my_model.predict(xi), axis=1)
+            forecast = np.append(forecast, yi[0][0])
+            # pop the first index and append the yi to the last index
+            xi =  np.delete(xi, [0], 1)
+            xi = np.append(xi[0], yi, 0)
+            xi = np.reshape(xi, (1, n, 2))
+    else:
+        X_test = np.reshape(X_test, (30, n, 1))
+        xi = np.reshape(X_test[0], (1, n))
 
-    #     for _ in tqdm(range(len(X_test))):
-    #         yi = np.mean(my_model.predict(np.reshape(xi, (1,n,1))))
-    #         forecast = np.append(forecast, yi)
-    #         # pop the first index and append the yi to the last index
-    #         xi =  np.delete(xi, [0], 1)
-    #         yi = np.reshape(yi, (1, 1))
-    #         xi = np.append(xi, yi, 1)
+        for _ in tqdm(range(len(X_test))):
+            yi = np.mean(my_model.predict(np.reshape(xi, (1,n,1))))
+            forecast = np.append(forecast, yi)
+            # pop the first index and append the yi to the last index
+            xi =  np.delete(xi, [0], 1)
+            yi = np.reshape(yi, (1, 1))
+            xi = np.append(xi, yi, 1)
 
-    # # Save the results
-    # commodity = 'CL=F'
-    # if not os.path.exists(f"Data/Results/{commodity}"):
-    #     os.makedirs(f"Data/Results/{commodity}")
-    # np.save(f"Data/Results/{commodity}/{ver}_n={n}", forecast)
+    # Save the results
+    commodity = 'CL=F'
+    if not os.path.exists(f"Data/Results/{commodity}"):
+        os.makedirs(f"Data/Results/{commodity}")
+    np.save(f"Data/Results/{commodity}/{ver}_n={n}", forecast)

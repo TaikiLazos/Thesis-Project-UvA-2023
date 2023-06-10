@@ -43,3 +43,11 @@ real = real.set_axis(column_names, axis=1)
 print(real)
 real.plot()
 plt.savefig(f'result.png')
+
+
+# days = np.array(np.arange(len(y_true)))
+# plt.plot(days,y_true, label='true')
+# plt.plot(days, prediction, label='prediction')
+# plt.plot(days, forecast, label='forecasting')
+# plt.legend()
+# plt.savefig(f'Results/result of {company}, N = {N}, {VER}.png')

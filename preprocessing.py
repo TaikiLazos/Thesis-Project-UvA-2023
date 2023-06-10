@@ -17,9 +17,9 @@ import numpy as np
 
 # Global variables
 GET_RAW = False
-WITHOUT_COMMODITY = False
+WITHOUT_COMMODITY = True
 WITH_COMMODITY = True
-N = 5  # window size: 5, 7, 10, 14
+N = 14  # window size: 5, 7, 10, 14
 M = 3
 START_DATE = "2000-08-23"  # This is the oldest date yfinance has
 END_DATE = "2023-05-01"

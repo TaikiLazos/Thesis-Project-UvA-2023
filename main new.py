@@ -11,6 +11,7 @@ from keras.models import Sequential, load_model
 import matplotlib.pyplot as plt
 import pandas as pd
 import data_process
+from sklearn.metrics import mean_squared_error
 
 def lstm(x, y):
     """
@@ -20,7 +21,7 @@ def lstm(x, y):
     """
     # parameter setting
     epochs = 50
-    batch_size = 250
+    batch_size = 32
 
     # # For differntial privacy
     # l2_norm_clip = 1.5
@@ -58,7 +59,7 @@ def lstm(x, y):
 
 
     # my_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
-    my_model.compile(optimizer="RMSprop", loss="mean_squared_error", metrics=['accuracy'])
+    my_model.compile(optimizer="RMSprop", loss="mean_squared_error")
 
     my_model.summary()
 
@@ -87,9 +88,9 @@ def plot_loss_curve(h):
 if __name__ == "__main__":
     # Global settings
     TRAIN = True # Train model or not?
-    N = 5 # historical input window size N = 5, 7, 10, 14
+    N = 14 # historical input window size N = 5, 7, 10, 14
     M = 3 # historical output window size, only 3 is available right now
-    VER = "with" # with -> with commodity feature, without -> without commodity feature
+    VER = "without" # with -> with commodity feature, without -> without commodity feature
 
     if TRAIN:
         # Load the training data
@@ -106,29 +107,110 @@ if __name__ == "__main__":
         # plot_loss_curve(history)
 
         # Save the model
-        model.save("Model/Test_model")
+        model.save(f"Model/model_{N}_{VER}")
     else:
-        model = load_model("Model/Test_model")
+        model = load_model(f"Model/model_{N}_{VER}")
         model.summary()
 
     # Prediction
     # Load test data
-    commodity = 'CL=F'
-    company = 'XOM'
-    x_train = np.load(f"Data/Training/n={N}/x_{VER}.npy", allow_pickle=True)
-    y_train = np.load(f"Data/Training/n={N}/y_{VER}.npy", allow_pickle=True)
+    data_pair = {
+        "CL=F": [
+            "2222.SR",
+            # "SNPMF",
+            # "PCCYF",
+            "XOM",
+            "SHEL",
+            "TTE",
+            "CVX",
+            "BP",
+            "MPC",
+            "VLO",
+        ]
+    }
 
-    test_df = pd.read_csv(f"Data/Test/{commodity}/n={N}/x_{VER}_{company}.csv")
-    tdf = test_df.iloc[:, 2:]
-    x_test, y_test = data_process.create_x_y(tdf, N, M)
+    RMSE = {}
 
-    result = model.predict(x_test)
+    for commodity, companies in data_pair.items():
+        for company in companies:
+            test_df = pd.read_csv(f"Data/Test/{commodity}/n={N}/x_{VER}_{company}.csv")
+            tdf = test_df.iloc[:, 2:]
+            x_test, y_test = data_process.create_x_y(tdf, N, M)
+            y_true = y_test[::2, 0, 0]
 
-    # We only care about the adjusted close price
-    y_hat = result[::2, 0, 0]
-    y_true = y_test[::2, 0, 0]
+            # Predicition result
+            prediction = model.predict(x_test)
 
-    days = np.array(np.arange(len(y_true)))
-    plt.plot(days,y_true)
-    plt.plot(days, y_hat)
-    plt.savefig('result.png')
+            # Forecasting result
+            forecast = np.array([])
+            xi = np.reshape(x_test[0], (1, N, x_test.shape[-1]))
+
+            for _ in range(len(x_test)):
+                yi = model.predict(xi)
+                forecast = np.append(forecast, yi)
+                # create a new xi
+                xi = np.delete(xi, 0, 1)
+                xi = np.append(xi, yi[:, 0:1, :], 1)
+            
+            # reshape the results
+            forecast = np.reshape(forecast, prediction.shape)
+            prediction = prediction[::2, 0, 0]
+            forecast = forecast[::2, 0, 0]
+
+            np.save(f"Results/{commodity}/N={N}/y_true_{VER}_{company}", y_true)
+            np.save(f"Results/{commodity}/N={N}/y_predict_{VER}_{company}_{VER}", prediction)
+            np.save(f"Results/{commodity}/N={N}/y_forecast_{VER}_{company}", forecast)
+
+            # calculate the RMSE score and then save them
+            s1 = mean_squared_error(y_true, prediction, squared=False)
+            s2 = mean_squared_error(y_true, forecast, squared=False)
+
+            RMSE[f'{commodity},{company}'] = [s1, s2]
+
+
+    print(f"N = {N}, M = {M}, version = {VER}")
+    print(RMSE)
+
+
+    # If you get an error above run this. It gives a result of single company
+
+    # company = "TTE"
+
+    # test_df = pd.read_csv(f"Data/Test/CL=F/n={N}/x_{VER}_{company}.csv")
+    # tdf = test_df.iloc[:, 2:]
+    # x_test, y_test = data_process.create_x_y(tdf, N, M)
+
+    # y_true = y_test[::2, 0, 0]
+
+    # # Predicition result
+    # prediction = model.predict(x_test)
+    # prediction = prediction[::2, 0, 0]
+
+    # # Forecasting result
+    # forecast = np.array([])
+    # xi = np.reshape(x_test[0], (1, N, x_test.shape[-1]))
+
+    # for _ in range(len(x_test)):
+    #     yi = model.predict(xi)
+    #     forecast = np.append(forecast, yi)
+    #     # create a new xi
+    #     xi = np.delete(xi, 0, 1)
+    #     xi = np.append(xi, yi[:, 0:1, :], 1)
+    
+    # # reshape the results
+    # forecast = np.reshape(forecast, y_test.shape)
+    # forecast = forecast[::2, 0, 0]
+
+    # s1 = mean_squared_error(y_true, prediction, squared=False)
+    # s2 = mean_squared_error(y_true, forecast, squared=False)
+
+    # print(company)
+    # print('RMSE of prediciton:', s1)
+    # print('RMSE of forecasting', s2)
+
+    # days = np.array(np.arange(len(y_true)))
+    # plt.plot(days,y_true, label='true')
+    # plt.plot(days, prediction, label='prediction')
+    # plt.plot(days, forecast, label='forecasting')
+    # plt.legend()
+    # plt.savefig(f'Results/result of {company}, N = {N}, {VER}.png')
