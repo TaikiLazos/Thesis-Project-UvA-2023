@@ -2,168 +2,144 @@
 # 2. Differential Privacy -> LS-LSTM shows improvement so why not -> main.py
 # 3. Algorithm X -> I need to do something here like TDM & TDC equivalent. -> main.py
 # 4. LSTM -> LSTM(32) -> dropout -> LSTM(16) -> dropout -> reformat to (M, # features) -> main.py
-# 5. Prediction & Forecasting 
+# 5. Prediction & Forecasting
 
-import numpy as np
-import matplotlib.pyplot as plt
-import tensorflow as tf
-from keras.models import Sequential, load_model
-from tqdm import tqdm
-from sklearn.metrics import mean_squared_error
 import os
-
-
-def univariate_model(X_train, y_train):
-    """
-    create single layer rnn model trained on X_train and y_train
-    and make predictions on the X_test data
-    """
-
-    # create a model
-    model = Sequential(
-        [
-            tf.keras.layers.LSTM(32, input_shape=X_train.shape[-2:]),
-            tf.keras.layers.Dense(m),
-        ]
-    )
-
-    model.compile(optimizer="adam", loss="mean_squared_error")
-
-    # fit the model
-    history = model.fit(
-        X_train, y_train, validation_split=0.15, epochs=50, batch_size=64, verbose=0
-    )
-
-    return history, model
-
-
-def multivariate_model(X_train, y_train):
-    """
-    create single layer rnn model trained on X_train and y_train
-    and make predictions on the X_test data
-    """
-
-    # create a model
-    model = Sequential(
-        [
-            tf.keras.layers.LSTM(
-                32,
-                input_shape=X_train.shape[-2:],
-                return_sequences=True,
-            ),
-            tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(X_train.shape[-1])),
-            tf.keras.layers.Lambda(lambda x: x[:, -y_train.shape[1]:, :])  # Adjust output shape
-        ]
-    )
-    model.compile(optimizer="adam", loss="mean_squared_error")
-
-    model.summary()
-
-    # fit the model
-    history = model.fit(
-        X_train, y_train, validation_split=0.15, epochs=50, batch_size=64, verbose=0
-    )
-
-    return history, model
-
-
-def plot_loss_curve(history):
-    plt.plot(history.history["loss"])
-    plt.plot(history.history["val_loss"])
-    plt.title("model loss")
-    plt.ylabel("loss")
-    plt.xlabel("epoch")
-    plt.legend(["train", "valid"], loc="upper left")
-    plt.show()
-
-
-def RMSE(y_true, y_hat):
-    return mean_squared_error(y_true, y_hat, squared=False)
-
+import numpy as np
+from keras.models import load_model
+from sklearn.metrics import mean_squared_error
+import pandas as pd
+import data_process
+import util
+import lstm_model
+import preprocessing
 
 if __name__ == "__main__":
-    # Set True if you want to train
-    TRAIN = False
+    ### Global settings ##########################################################
 
-    # This sets the historical window size
-    n = 5
-    m = 3
-    ver = "with"  # with -> with commodity feature (multivariate model), without -> (univariate model)
+    # Load the desired data
+    # N is the input window size and M is the output window size
+    # Possible (N, M) combinations are:
+    #  (N, M) = (2, 1), (4, 2), (6, 3), (8, 4), (10, 5)
+    #  (N, M) = (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)
+    #  (N, M) = (1, 2), (2, 4), (3, 6), (4, 8), (5, 10)
+    N = 5
+    M = 10
 
-    if TRAIN:
-        # the data is normalized, and has everything except the latest 20% SHEL data
-        x = np.load(f"Data/Training/n={n}/x_{ver}.npy")
-        y = np.load(f"Data/Training/n={n}/y_{ver}.npy")
+    # Specify the model
+    # "with" -> with the commodity feature, "without" -> without the commodity feature
+    VER = "with"
 
+    data_pair = {
+        "CL=F": [
+            "2222.SR",
+            "XOM",
+            "SHEL",
+            "TTE",
+            "CVX",
+            "BP",
+            "MPC",
+            "VLO",
+        ]
+    }
 
-        if ver == "with":
-            x = np.array([i.T for i in x])
-            y = np.array([i.T for i in y])
-            print("Training data shape")
-            print(x.shape, y.shape)
+    #############################################################################
 
-            history, my_model = multivariate_model(x, y)
-        else:
-            # reshape
-            x = np.reshape(x, (x.shape[0], x.shape[1], 1))
-            print("Training data shape")
-            print(x.shape, y.shape)
+    ### Loading Data and Training a LSTM model ##################################
 
-            history, my_model = univariate_model(x, y)
+    if not os.path.exists(f"Model/model_N={N}_M={M}_{VER}"):
+        # If there is no training data then you need to run preprocessing.py
+        if not os.path.exists(f"Data/Training/n={N}&m={M}/x_{VER}.npy"):
+            print("No Data found.")
+            print(f"Creating dataset for N = {N}, M = {M}, VER = {VER}...\n")
+            preprocessing.preprocessing(N=N, M=M, data_pair=data_pair, GET_RAW=False) # Set GET_RAW False after your initial run
 
-        my_model.save(f"Model/LSTM_model_n={n}_{ver}")
-        plot_loss_curve(history)
+        # Load the training data
+        print("Training Data Loading...")
+        x_train = np.load(f"Data/Training/n={N}&m={M}/x_{VER}.npy", allow_pickle=True)
+        y_train = np.load(f"Data/Training/n={N}&m={M}/y_{VER}.npy", allow_pickle=True)
+        print(f"x = {x_train.shape}, y = {y_train.shape}\n")
+
+        # Train the model
+        history, model = lstm_model.lstm(x_train, y_train, M)
+
+        # if you want you can plot the loss curve
+        # lstm_model.plot_loss_curve(history)
+
+        # Save the model
+        util.make_folder("Model")
+        model.save(f"Model/model_N={N}_M={M}_{VER}")
     else:
-        my_model = load_model(f"Model/LSTM_model_n={n}_{ver}")
+        model = load_model(f"Model/model_N={N}_M={M}_{VER}")
+        model.summary()
 
-    my_model.summary()
+    #############################################################################
 
-    ### Forecasting target company ###
-    target = "SHEL"
+    ### Prediction ##############################################################
 
-    # Loading Test dataset of the target company
-    X_test = np.load(f"Data/Test/n={n}/x_{ver}_{target}.npy")
-    Y_test = np.load(f"Data/Test/n=5/y_without_{target}.npy")
+    # Load test data
+    RMSE = {}
 
-    # Forecasting is for predicting future trend and Prediction is for predicting short term
-    forecast = np.array([])
-    X_test = np.array([i.T for i in X_test])
-    predict = my_model.predict(X_test)
-    print(X_test[0])
-    print(predict[0])
+    for commodity, companies in data_pair.items():
+        util.make_folder(f"Results/{commodity}/n={N}&m={M}")
+        for company in companies:
+            test_df = pd.read_csv(
+                f"Data/Test/{commodity}/n={N}&m={M}/x_{VER}_{company}.csv"
+            )
+            # Exclude the index and Date columns -> test_df.iloc[:, 2:]
+            x_test, y_test = data_process.create_x_y(test_df.iloc[:, 2:], N, M)
+            num_features = y_test.shape[2]
 
-    # Save the results
-    commodity = "CL=F"
-    if not os.path.exists(f"Data/Results/Prediction/{commodity}"):
-        os.makedirs(f"Data/Results/Prediction/{commodity}")
-    np.save(f"Data/Results/Prediction/{commodity}/{ver}_n={n}", predict)
+            # Collect all ground truth close prices
+            y_true = np.append(y_test[:-1, 0, 0], y_test[-1, :, 0])
 
-    if ver == 'with':
-        X_test = np.array([i.T for i in X_test])
-        Y_test = np.array([i.T for i in Y_test])
-        xi = np.reshape(X_test[0], (1, n, 2))
+            # Predicition result
+            prediction = model.predict(x_test)
+            prediction = np.append(prediction[:-1, -1, 0], np.flip(y_test[-1, :, 0]))
 
-        for _ in tqdm(range(len(X_test))):
-            yi = np.mean(my_model.predict(xi), axis=1)
-            forecast = np.append(forecast, yi[0][0])
-            # pop the first index and append the yi to the last index
-            xi =  np.delete(xi, [0], 1)
-            xi = np.append(xi[0], yi, 0)
-            xi = np.reshape(xi, (1, n, 2))
-    else:
-        X_test = np.reshape(X_test, (30, n, 1))
-        xi = np.reshape(X_test[0], (1, n))
+            # Forecasting result
+            forecast = np.array([])
+            xi = np.reshape(x_test[0], (1, N, x_test.shape[-1]))
 
-        for _ in tqdm(range(len(X_test))):
-            yi = np.mean(my_model.predict(np.reshape(xi, (1,n,1))))
-            forecast = np.append(forecast, yi)
-            # pop the first index and append the yi to the last index
-            xi =  np.delete(xi, [0], 1)
-            yi = np.reshape(yi, (1, 1))
-            xi = np.append(xi, yi, 1)
+            # for _ in range(len(x_test)):
+            #     yi = model.predict(xi)
+            #     forecast = np.append(forecast, yi)
+            #     # create a new xi
+            #     xi = np.delete(xi, 0, 1)
+            #     xi = np.append(xi, yi[:, -1:, :], 1)
+            
+            while forecast.shape[0] < y_true.shape[0]:
+                yi = model.predict(xi)
+                pprice = yi[:, :, 0]
+                forecast = np.append(forecast, pprice)
+                # update xi
+                if N <= M:
+                    xi = yi[:, :N, :]
+                else:
+                    xi = np.append(xi[:, (N - M):, :], yi[:, :, :])
+                    xi = np.reshape(xi, (1, N, num_features))
+                    
 
-    # Save the results
-    commodity = 'CL=F'
-    if not os.path.exists(f"Data/Results/{commodity}"):
-        os.makedirs(f"Data/Results/{commodity}")
-    np.save(f"Data/Results/{commodity}/{ver}_n={n}", forecast)
+            # reshape the results
+            forecast = forecast[:y_true.shape[0]]
+
+            np.save(f"Results/{commodity}/n={N}&m={M}/y_true_{VER}_{company}", y_true)
+            np.save(
+                f"Results/{commodity}/n={N}&m={M}/y_predict_{VER}_{company}", prediction
+            )
+            np.save(
+                f"Results/{commodity}/n={N}&m={M}/y_forecast_{VER}_{company}", forecast
+            )
+
+            # calculate the RMSE score and then save them
+            s1 = mean_squared_error(y_true, prediction, squared=False)
+            s2 = mean_squared_error(y_true, forecast, squared=False)
+
+            RMSE[f"{commodity},{company}"] = [s1, s2]
+
+    print(f"N = {N}, M = {M}, version = {VER}")
+    print(
+        f"RMSE for Single Forecasting: {sum(val[0] for val in RMSE.values()) / len(RMSE)}, RMSE for Multistep Forecasting: {sum(val[1] for val in RMSE.values()) / len(RMSE)}"
+    )
+    print("RMSE for each company (Single Forecasting, Multistep Forecasting):\n", RMSE)
+    print("-------All Work Run Succesfully-------")
